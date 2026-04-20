@@ -10,11 +10,10 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "phulo.h"
+#include "philo.h"
 
-void	data_input(int argc, char *argv[], t_data data)
+void	data_input(int argc, char *argv[], t_data *data)
 {
-	data->N = ft_atoi(argv[1]);
 	data->n = ft_atoi(argv[1]);
 	data->t_die = ft_atoi(argv[2]);
 	data->t_eat = ft_atoi(argv[3]);
@@ -31,6 +30,9 @@ int	main(int argc, char *argv[])
 		printf("wrong quantity of arguments\n");
 		return (0);
 	}
-	data_input(argc, argv, data);
+
+
+	data_input(argc, argv, &data);
+
 	return (0);
 }

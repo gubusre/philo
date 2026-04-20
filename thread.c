@@ -24,3 +24,8 @@ void	*philo_routine(void *arg)
 	}
 	return (NULL);
 }
+
+void thread_ignition(t_data data)
+{
+	pthread_create(&thread, NULL, philo_routine, &philo);
+}
