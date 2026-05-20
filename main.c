@@ -60,42 +60,50 @@ int	init_philos(t_data *data)
 		p->data = data;
 		p->left_fork = &data->forks[i];
 		p->right_fork = &data->forks[(i + 1) % data->n_philo];
+		p->left_index = i;
+		p->right_index = (i + 1) % data->n_philo;
+		pthread_mutex_lock(&p->data->death_mutex);
 		p->last_meal_time = data->start_time;
-		p->meals_eaten = 0;
 		p->is_eating = 0;
+		pthread_mutex_unlock(&p->data->death_mutex);
+		p->meals_eaten = 0;
 		i++;
 	}
 	return (0);
 }
 
-int	init_data(t_data *data, int argc, char *argv[])
+int init_data(t_data *data, int argc, char *argv[])
 {
-	int i;
+    data->n_philo = atoi(argv[1]);
+    data->t_die   = atol(argv[2]);
+    data->t_eat   = atol(argv[3]);
+    data->t_sleep = atol(argv[4]);
 
-	data->n_philo = atoi(argv[1]);
-	data->t_die = atoi(argv[2]);
-	data->t_eat = atoi(argv[3]);
-	data->t_sleep = atoi(argv[4]);
-	if (argc == 6)
-		data->must_eat = atoi(argv[5]);
-	else
-		data->must_eat = -1;
-	data->simulation_stop  = 0;
-	data->philos_full = 0;
-	pthread_mutex_init(&data->write_mutex, NULL);
-	pthread_mutex_init(&data->death_mutex, NULL);
-	pthread_mutex_init(&data->full_mutex, NULL);
-	data->forks = malloc(sizeof(pthread_mutex_t) * data-> n_philo);
-	if (!data->forks)
-		return (1);
-	i = 0;
-	while (i < data->n_philo)
-	{
-		pthread_mutex_init(&data->forks[i], NULL);
-		i++;
-	}
-	data->start_time = get_timestamp();
-	return (0);
+    if (argc == 6)
+        data->must_eat = atoi(argv[5]);
+    else
+        data->must_eat = -1;
+
+    if (data->n_philo < 1 || data->t_die < 1 || 
+        data->t_eat < 1 || data->t_sleep < 1)
+        return (1);
+
+    data->simulation_stop = 0;
+    data->philos_full = 0;
+
+    pthread_mutex_init(&data->write_mutex, NULL);
+    pthread_mutex_init(&data->death_mutex, NULL);
+    pthread_mutex_init(&data->full_mutex, NULL);
+
+    data->forks = malloc(sizeof(pthread_mutex_t) * data->n_philo);
+    if (!data->forks)
+        return (1);
+
+    for (int i = 0; i < data->n_philo; i++)
+        pthread_mutex_init(&data->forks[i], NULL);
+
+    data->start_time = get_timestamp();
+    return (0);
 }
 
 int	main(int argc, char *argv[])

@@ -12,35 +12,38 @@
 
 #include "philo.h"
 
-void	*monitor(void	*arg)
+void *monitor(void *arg)
 {
-	t_data	*data = (t_data *)arg;
-	t_philo	*p;
-	int		i;
-	long long	time_since_meal;
-	long long	ts;
+    t_data *data = (t_data *)arg;
+    long long time_since_meal;
+    int i;
 
-	while (1)
-	{
-		i = 0;
-		while (i < data->n_philo)
-		{
-			p = &data->philos[i];
-			pthread_mutex_lock(&data->death_mutex);
-			time_since_meal = get_timestamp() - p->last_meal_time;
-			if (time_since_meal > data->t_die && p->is_eating == 0) 
-			{
-				data->simulation_stop = 1;
-				pthread_mutex_lock(&data->write_mutex);
-				ts = get_timestamp() - data->start_time;
-				printf("%lld %d died\n", ts, p->id + 1);
-				pthread_mutex_unlock(&data->write_mutex);
-				pthread_mutex_unlock(&data->death_mutex);
-				return (NULL);
-			}
-			pthread_mutex_unlock(&data->death_mutex);
-			i++;
-		}
-		usleep(500);
-	}
+    while (1)
+    {
+        i = 0;
+        while (i < data->n_philo)
+        {
+            pthread_mutex_lock(&data->death_mutex);
+            time_since_meal = get_timestamp() - data->philos[i].last_meal_time;
+            int eating = data->philos[i].is_eating;
+            pthread_mutex_unlock(&data->death_mutex);
+
+            if (!eating && time_since_meal > data->t_die)
+            {
+                pthread_mutex_lock(&data->write_mutex);
+                printf("%lld %d died\n", get_timestamp() - data->start_time, i + 1);
+                pthread_mutex_unlock(&data->write_mutex);
+
+                pthread_mutex_lock(&data->death_mutex);
+                data->simulation_stop = 1;
+                pthread_mutex_unlock(&data->death_mutex);
+                return (NULL);
+            }
+            i++;
+        }
+        usleep(500);
+    }
 }
+
+
+
