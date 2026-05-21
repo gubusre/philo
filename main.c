@@ -62,6 +62,7 @@ int	init_philos(t_data *data)
 		p->right_fork = &data->forks[(i + 1) % data->n_philo];
 		p->left_index = i;
 		p->right_index = (i + 1) % data->n_philo;
+		p->is_full = 0;
 		pthread_mutex_lock(&p->data->death_mutex);
 		p->last_meal_time = data->start_time;
 		p->is_eating = 0;
@@ -72,8 +73,37 @@ int	init_philos(t_data *data)
 	return (0);
 }
 
+static int  is_valid_number(const char *str)
+{
+    int i;
+
+    i = 0;
+    if (!str || str[0] == '\0')
+        return (0);
+    while (str[i])
+    {
+        if (str[i] < '0' || str[i] > '9')
+            return (0);
+        i++;
+    }
+    return (1);
+}
+
 int init_data(t_data *data, int argc, char *argv[])
 {
+    int i;
+
+    i = 1;
+    while (i < argc)
+    {
+        if (!is_valid_number(argv[i]))
+        {
+            printf("Error: invalid argument '%s'\n", argv[i]);
+            return (1);
+        }
+        i++;
+    }
+
     data->n_philo = atoi(argv[1]);
     data->t_die   = atol(argv[2]);
     data->t_eat   = atol(argv[3]);
@@ -84,7 +114,7 @@ int init_data(t_data *data, int argc, char *argv[])
     else
         data->must_eat = -1;
 
-    if (data->n_philo < 1 || data->t_die < 1 || 
+    if (data->n_philo < 1 || data->t_die < 1 ||
         data->t_eat < 1 || data->t_sleep < 1)
         return (1);
 

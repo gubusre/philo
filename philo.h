@@ -33,6 +33,7 @@ typedef struct s_philo
 	long long	last_meal_time;
 	int		meals_eaten;
 	int		is_eating;
+	int     is_full;
 	int		left_index;
 	int		right_index;
 

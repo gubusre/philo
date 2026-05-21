@@ -39,7 +39,6 @@ void eat(t_philo *p)
     pthread_mutex_unlock(&p->data->death_mutex);
 
     print_action(p, "is eating");
-
     smart_sleep(p->data->t_eat, p->data);
 
     pthread_mutex_lock(&p->data->death_mutex);
@@ -48,8 +47,12 @@ void eat(t_philo *p)
 
     p->meals_eaten++;
 
-    if (p->data->must_eat > 0 && p->meals_eaten == p->data->must_eat)
+    // ← flag para no incrementar más de una vez
+    if (p->data->must_eat > 0
+        && p->meals_eaten == p->data->must_eat
+        && !p->is_full)
     {
+        p->is_full = 1;
         pthread_mutex_lock(&p->data->full_mutex);
         p->data->philos_full++;
         pthread_mutex_unlock(&p->data->full_mutex);
@@ -71,19 +74,24 @@ void take_forks(t_philo *p)
     {
         pthread_mutex_lock(first);
         if (simulation_should_stop(p->data))
-            return (pthread_mutex_unlock(first), (void)0);
-
+        {
+            pthread_mutex_unlock(first);
+            return ;
+        }
         print_action(p, "has taken a fork");
 
         if (pthread_mutex_trylock(second) == 0)
         {
             if (simulation_should_stop(p->data))
-                return (release_forks(p), (void)0);
+            {
+                pthread_mutex_unlock(second);  // ← antes faltaba esto
+                pthread_mutex_unlock(first);
+                return ;
+            }
             print_action(p, "has taken a fork");
-            return;
+            return ;
         }
         pthread_mutex_unlock(first);
-
         usleep(50 + (p->id % 30) * 10);
     }
 }

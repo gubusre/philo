@@ -28,10 +28,11 @@ void *monitor(void *arg)
             int eating = data->philos[i].is_eating;
             pthread_mutex_unlock(&data->death_mutex);
 
-            if (!eating && time_since_meal > data->t_die)
+            if (!eating && time_since_meal >= data->t_die)  // ← >= en vez de >
             {
                 pthread_mutex_lock(&data->write_mutex);
-                printf("%lld %d died\n", get_timestamp() - data->start_time, i + 1);
+                printf("%lld %d died\n",
+                    get_timestamp() - data->start_time, i + 1);
                 pthread_mutex_unlock(&data->write_mutex);
 
                 pthread_mutex_lock(&data->death_mutex);
@@ -44,6 +45,5 @@ void *monitor(void *arg)
         usleep(500);
     }
 }
-
 
 
