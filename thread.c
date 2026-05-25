@@ -25,12 +25,24 @@ void	philo_sleep(t_philo *p)
 	usleep(200);
 }
 
-void	release_forks(t_philo *p)
+/* release_forks: desbloquear en orden inverso al que se adquirió */
+void release_forks(t_philo *p)
 {
-	pthread_mutex_unlock(p->left_fork);
-	pthread_mutex_unlock(p->right_fork);
+    /* si el filósofo adquirió primero el fork con menor índice,
+       liberamos en orden inverso al que se adquirió para mayor claridad */
+    if (p->left_index < p->right_index)
+    {
+        pthread_mutex_unlock(p->right_fork);
+        pthread_mutex_unlock(p->left_fork);
+    }
+    else
+    {
+        pthread_mutex_unlock(p->left_fork);
+        pthread_mutex_unlock(p->right_fork);
+    }
 }
 
+/* eat: proteger actualizaciones de meals_eaten / is_full con full_mutex */
 void eat(t_philo *p)
 {
     pthread_mutex_lock(&p->data->death_mutex);
@@ -45,20 +57,20 @@ void eat(t_philo *p)
     p->is_eating = 0;
     pthread_mutex_unlock(&p->data->death_mutex);
 
+    /* actualizar contador de comidas y bandera de lleno bajo full_mutex */
+    pthread_mutex_lock(&p->data->full_mutex);
     p->meals_eaten++;
-
-    // ← flag para no incrementar más de una vez
     if (p->data->must_eat > 0
         && p->meals_eaten == p->data->must_eat
         && !p->is_full)
     {
         p->is_full = 1;
-        pthread_mutex_lock(&p->data->full_mutex);
         p->data->philos_full++;
-        pthread_mutex_unlock(&p->data->full_mutex);
     }
+    pthread_mutex_unlock(&p->data->full_mutex);
 }
 
+/* take_forks: backoff exponencial con tope y comprobaciones protegidas */
 void take_forks(t_philo *p)
 {
     pthread_mutex_t *first = p->left_fork;
@@ -69,6 +81,9 @@ void take_forks(t_philo *p)
         first = p->right_fork;
         second = p->left_fork;
     }
+
+    int sleep_ms = 50;
+    const int max_sleep_ms = 1000;
 
     while (!simulation_should_stop(p->data))
     {
@@ -84,17 +99,24 @@ void take_forks(t_philo *p)
         {
             if (simulation_should_stop(p->data))
             {
-                pthread_mutex_unlock(second);  // ← antes faltaba esto
+                pthread_mutex_unlock(second);
                 pthread_mutex_unlock(first);
                 return ;
             }
             print_action(p, "has taken a fork");
             return ;
         }
+        /* no pudo tomar el segundo, liberar y esperar con backoff */
         pthread_mutex_unlock(first);
-        usleep(50 + (p->id % 30) * 10);
+
+        /* backoff exponencial con jitter por id para reducir colisiones */
+        usleep((useconds_t)(sleep_ms * 1000 + (p->id % 30) * 10));
+        sleep_ms *= 2;
+        if (sleep_ms > max_sleep_ms)
+            sleep_ms = max_sleep_ms;
     }
 }
+
 
 int	simulation_should_stop(t_data *data)
 {
@@ -127,7 +149,8 @@ void *philo_routine(void *arg)
         pthread_mutex_unlock(p->left_fork);
         return (NULL);
     }
-    usleep((p->id % 10) * 100);
+    if (p->id % 2 == 1)
+        smart_sleep(p->data->t_eat, p->data); 
     while (!simulation_should_stop(p->data))
     {
         take_forks(p);

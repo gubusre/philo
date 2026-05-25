@@ -24,53 +24,57 @@ void	join_threads(t_data *data)
 	}
 }
 
-int	init_simulation(t_data *data)
+int init_simulation(t_data *data)
 {
-	int i;
-	pthread_t   monitor_thread;
-	t_philo *p;
+    int i;
+    pthread_t   monitor_thread;
+    t_philo *p;
 
-	i = 0;
-	while (i < data->n_philo)
-	{
-		p = &data->philos[i];
-		if (pthread_create(&p->thread, NULL, philo_routine, p) != 0)
-			return (1);
-		usleep(100);
-		i++;
-	}
-	if (pthread_create(&monitor_thread, NULL, monitor, data) != 0)
-                return (1);
-        pthread_detach(monitor_thread);
-	return (0);
+    data->start_time = get_timestamp();
+
+    i = 0;
+    while (i < data->n_philo)
+    {
+        p = &data->philos[i];
+        if (pthread_create(&p->thread, NULL, philo_routine, p) != 0)
+            return (1);
+        usleep(100);
+        i++;
+    }
+    if (pthread_create(&monitor_thread, NULL, monitor, data) != 0)
+        return (1);
+    pthread_detach(monitor_thread);
+    return (0);
 }
 
-int	init_philos(t_data *data)
+int init_philos(t_data *data)
 {
-	int	i;
+    int     i;
 
-	data->philos = malloc(sizeof(t_philo) * data->n_philo);
-	if (!data->philos)
-		return (1);
-	i = 0;
-	while (i < data->n_philo)
-	{
-		t_philo *p = &data->philos[i];
-		p->id = i;
-		p->data = data;
-		p->left_fork = &data->forks[i];
-		p->right_fork = &data->forks[(i + 1) % data->n_philo];
-		p->left_index = i;
-		p->right_index = (i + 1) % data->n_philo;
-		p->is_full = 0;
-		pthread_mutex_lock(&p->data->death_mutex);
-		p->last_meal_time = data->start_time;
-		p->is_eating = 0;
-		pthread_mutex_unlock(&p->data->death_mutex);
-		p->meals_eaten = 0;
-		i++;
-	}
-	return (0);
+    data->philos = malloc(sizeof(t_philo) * data->n_philo);
+    if (!data->philos)
+        return (1);
+    i = 0;
+    while (i < data->n_philo)
+    {
+        t_philo *p = &data->philos[i];
+        p->id = i;
+        p->data = data;
+        p->left_fork = &data->forks[i];
+        p->right_fork = &data->forks[(i + 1) % data->n_philo];
+        p->left_index = i;
+        p->right_index = (i + 1) % data->n_philo;
+        p->is_full = 0;
+
+        pthread_mutex_lock(&p->data->death_mutex);
+        p->last_meal_time = get_timestamp();
+        p->is_eating = 0;
+        pthread_mutex_unlock(&p->data->death_mutex);
+
+        p->meals_eaten = 0;
+        i++;
+    }
+    return (0);
 }
 
 static int  is_valid_number(const char *str)
@@ -121,9 +125,9 @@ int init_data(t_data *data, int argc, char *argv[])
     data->simulation_stop = 0;
     data->philos_full = 0;
 
-    pthread_mutex_init(&data->write_mutex, NULL);
-    pthread_mutex_init(&data->death_mutex, NULL);
-    pthread_mutex_init(&data->full_mutex, NULL);
+    if (pthread_mutex_init(&data->write_mutex, NULL) != 0) return (1);
+    if (pthread_mutex_init(&data->death_mutex, NULL) != 0) return (1);
+    if (pthread_mutex_init(&data->full_mutex, NULL) != 0) return (1);
 
     data->forks = malloc(sizeof(pthread_mutex_t) * data->n_philo);
     if (!data->forks)
@@ -131,8 +135,6 @@ int init_data(t_data *data, int argc, char *argv[])
 
     for (int i = 0; i < data->n_philo; i++)
         pthread_mutex_init(&data->forks[i], NULL);
-
-    data->start_time = get_timestamp();
     return (0);
 }
 
