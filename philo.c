@@ -49,9 +49,7 @@ static void eat(t_philo *p)
 
     print_action(p, "is eating");
 
-    p->is_eating = 1;
     smart_sleep(p->data->t_eat, p->data);
-    p->is_eating = 0;
 
     pthread_mutex_lock(&p->meal_mutex);
     p->meals_eaten++;
@@ -86,11 +84,16 @@ void *philo_routine(void *arg)
         pthread_mutex_unlock(p->left_fork);
         return (NULL);
     }
-        if (p->id % 2 != 0)
-            usleep(p->data->t_eat * 1000);
+    if (p->id % 2 != 0)
+        usleep(p->data->t_eat * 1000);
     while (!simulation_should_stop(p->data))
     {
         take_forks(p);
+        if (simulation_should_stop(p->data))
+        {
+            release_forks(p);
+            break;
+        }
         eat(p);
         release_forks(p);
         philo_sleep(p);

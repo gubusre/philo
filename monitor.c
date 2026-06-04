@@ -24,12 +24,6 @@ static int all_philos_full(t_data *data)
     return (1);
 }
 
-/*
-** Marcamos simulation_stop = 1 e imprimimos la muerte dentro del mismo
-** write_mutex. Asi print_action en otros hilos no puede imprimir nada
-** despues de la muerte: cuando adquieran write_mutex, simulation_stop
-** ya sera 1 y el if lo bloqueara.
-*/
 static void set_dead_and_print(t_data *data, t_philo *p)
 {
     long long time;

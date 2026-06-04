@@ -23,8 +23,6 @@ typedef struct s_data
 
     pthread_mutex_t *forks;
     pthread_mutex_t write_mutex;
-    pthread_mutex_t death_mutex;
-    pthread_mutex_t full_mutex;
 
     struct s_philo  *philos;
 
@@ -45,21 +43,22 @@ typedef struct s_philo
     long long       last_meal_time;
     int             meals_eaten;
     int             is_full;
-    int             is_eating;
 }               t_philo;
 
-int     init_data(t_data *data, int argc, char *argv[]);
-int     init_philos(t_data *data);
-int     init_simulation(t_data *data);
-void    cleanup(t_data *data);
-void    join_threads(t_data *data);
+int         init_data(t_data *data, int argc, char *argv[]);
+int         init_philos(t_data *data);
+int         init_simulation(t_data *data);
+void        cleanup(t_data *data);
+void        join_threads(t_data *data);
 
-/* funciones que implementamos aquí */
-void    *philo_routine(void *arg);
-void    *monitor(void *arg);
-long long get_timestamp(void);
-void    smart_sleep(long long ms, t_data *data);
-void    print_action(t_philo *p, const char *msg);
-int     simulation_should_stop(t_data *data);
+void        *philo_routine(void *arg);
+void        *monitor(void *arg);
+long long   get_timestamp(void);
+void        smart_sleep(long long ms, t_data *data);
+void        print_action(t_philo *p, const char *msg);
+int         simulation_should_stop(t_data *data);
+
+long long   ft_atol(const char *str);
+int         ft_strlen(const char *str);
 
 #endif

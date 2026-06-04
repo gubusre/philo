@@ -19,6 +19,8 @@ static int is_valid_number(const char *str)
     i = 0;
     if (!str || str[0] == '\0')
         return (0);
+    if (ft_strlen(str) > 10)
+        return (0);
     while (str[i])
     {
         if (str[i] < '0' || str[i] > '9')
@@ -50,12 +52,12 @@ int init_data(t_data *data, int argc, char *argv[])
         i++;
     }
 
-    data->n_philo = atoi(argv[1]);
-    data->t_die   = atol(argv[2]);
-    data->t_eat   = atol(argv[3]);
-    data->t_sleep = atol(argv[4]);
+    data->n_philo  = (int)ft_atol(argv[1]);
+    data->t_die    = ft_atol(argv[2]);
+    data->t_eat    = ft_atol(argv[3]);
+    data->t_sleep  = ft_atol(argv[4]);
     if (argc == 6)
-        data->must_eat = atoi(argv[5]);
+        data->must_eat = (int)ft_atol(argv[5]);
     else
         data->must_eat = -1;
 
@@ -65,32 +67,16 @@ int init_data(t_data *data, int argc, char *argv[])
 
     data->simulation_stop = 0;
     data->philos_full = 0;
-    if ((ret = pthread_mutex_init(&data->write_mutex, NULL)) != 0) 
+    if ((ret = pthread_mutex_init(&data->write_mutex, NULL)) != 0)
         return (1);
-    if ((ret = pthread_mutex_init(&data->death_mutex, NULL)) != 0)
-    {
-        pthread_mutex_destroy(&data->write_mutex);
-        return (1);
-    }
-    if ((ret = pthread_mutex_init(&data->full_mutex, NULL)) != 0)
-    {
-        pthread_mutex_destroy(&data->write_mutex);
-        pthread_mutex_destroy(&data->death_mutex);
-        return (1);
-    }
 
     data->mutexes_inited = 1;
 
     data->forks = malloc(sizeof(pthread_mutex_t) * data->n_philo);
     if (!data->forks)
     {
-        if (data->mutexes_inited)
-        {
-            pthread_mutex_destroy(&data->write_mutex);
-            pthread_mutex_destroy(&data->death_mutex);
-            pthread_mutex_destroy(&data->full_mutex);
-            data->mutexes_inited = 0;
-        }
+        pthread_mutex_destroy(&data->write_mutex);
+        data->mutexes_inited = 0;
         return (1);
     }
 
@@ -101,13 +87,9 @@ int init_data(t_data *data, int argc, char *argv[])
             for (int k = 0; k < j; k++)
                 pthread_mutex_destroy(&data->forks[k]);
             free(data->forks);
-            if (data->mutexes_inited)
-            {
-                pthread_mutex_destroy(&data->write_mutex);
-                pthread_mutex_destroy(&data->death_mutex);
-                pthread_mutex_destroy(&data->full_mutex);
-                data->mutexes_inited = 0;
-            }
+            data->forks = NULL;
+            pthread_mutex_destroy(&data->write_mutex);
+            data->mutexes_inited = 0;
             return (1);
         }
     }
@@ -118,7 +100,6 @@ int init_data(t_data *data, int argc, char *argv[])
 int init_philos(t_data *data)
 {
     int i;
-    int ret;
 
     data->philos = malloc(sizeof(t_philo) * data->n_philo);
     if (!data->philos)
@@ -134,7 +115,6 @@ int init_philos(t_data *data)
         p->right_fork = &data->forks[(i + 1) % data->n_philo];
         p->meals_eaten = 0;
         p->is_full = 0;
-        p->is_eating = 0;
 
         if (pthread_mutex_init(&p->meal_mutex, NULL) != 0)
         {
@@ -144,9 +124,7 @@ int init_philos(t_data *data)
             data->philos = NULL;
             return (1);
         }
-        pthread_mutex_lock(&p->meal_mutex);
-        p->last_meal_time = get_timestamp();
-        pthread_mutex_unlock(&p->meal_mutex);
+        p->last_meal_time = 0;
         i++;
     }
 
@@ -156,10 +134,18 @@ int init_philos(t_data *data)
 
 int init_simulation(t_data *data)
 {
-    int i;
+    int       i;
     pthread_t monitor_thread;
 
     data->start_time = get_timestamp();
+    i = 0;
+    while (i < data->n_philo)
+    {
+        pthread_mutex_lock(&data->philos[i].meal_mutex);
+        data->philos[i].last_meal_time = data->start_time;
+        pthread_mutex_unlock(&data->philos[i].meal_mutex);
+        i++;
+    }
 
     i = 0;
     while (i < data->n_philo)
@@ -168,12 +154,11 @@ int init_simulation(t_data *data)
 
         if (pthread_create(&p->thread, NULL, philo_routine, p) != 0)
         {
-            pthread_mutex_lock(&data->death_mutex);
+            pthread_mutex_lock(&data->write_mutex);
             data->simulation_stop = 1;
-            pthread_mutex_unlock(&data->death_mutex);
+            pthread_mutex_unlock(&data->write_mutex);
             for (int j = 0; j < i; j++)
                 pthread_join(data->philos[j].thread, NULL);
-
             return (1);
         }
         data->threads_created++;
@@ -182,13 +167,11 @@ int init_simulation(t_data *data)
 
     if (pthread_create(&monitor_thread, NULL, monitor, data) != 0)
     {
-        pthread_mutex_lock(&data->death_mutex);
+        pthread_mutex_lock(&data->write_mutex);
         data->simulation_stop = 1;
-        pthread_mutex_unlock(&data->death_mutex);
-
+        pthread_mutex_unlock(&data->write_mutex);
         for (int j = 0; j < data->n_philo; j++)
             pthread_join(data->philos[j].thread, NULL);
-
         return (1);
     }
 
@@ -208,7 +191,6 @@ int main(int argc, char *argv[])
     }
     if (init_data(&data, argc, argv) != 0)
         return (1);
-        
     if (init_philos(&data) != 0)
     {
         cleanup(&data);
