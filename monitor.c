@@ -24,11 +24,18 @@ static int all_philos_full(t_data *data)
     return (1);
 }
 
-static void print_death(t_data *data, t_philo *p)
+/*
+** Marcamos simulation_stop = 1 e imprimimos la muerte dentro del mismo
+** write_mutex. Asi print_action en otros hilos no puede imprimir nada
+** despues de la muerte: cuando adquieran write_mutex, simulation_stop
+** ya sera 1 y el if lo bloqueara.
+*/
+static void set_dead_and_print(t_data *data, t_philo *p)
 {
     long long time;
 
     pthread_mutex_lock(&data->write_mutex);
+    data->simulation_stop = 1;
     time = get_timestamp() - data->start_time;
     printf("%lld %d died\n", time, p->id + 1);
     pthread_mutex_unlock(&data->write_mutex);
@@ -36,10 +43,10 @@ static void print_death(t_data *data, t_philo *p)
 
 void *monitor(void *arg)
 {
-    t_data     *data;
-    int         i;
-    long long   now;
-    long long   last;
+    t_data      *data;
+    int          i;
+    long long    now;
+    long long    last;
 
     data = (t_data *)arg;
     while (1)
@@ -50,19 +57,11 @@ void *monitor(void *arg)
             pthread_mutex_lock(&data->philos[i].meal_mutex);
             last = data->philos[i].last_meal_time;
             pthread_mutex_unlock(&data->philos[i].meal_mutex);
-            printf("%lld last meal time\n", last);
+
             now = get_timestamp();
-            printf("%lld monitor activo\n", now);
-            printf("philo = %d /   now - last = %lld\n", data->philos[i].id , now - last);
-            printf("time to die = %lld\n", data->t_die);
             if ((now - last) > data->t_die)
             {
-                printf("%lld dentro now - last\n", now);
-                pthread_mutex_lock(&data->death_mutex);
-                data->simulation_stop = 1;
-                pthread_mutex_unlock(&data->death_mutex);
-                print_death(data, &data->philos[i]);
-
+                set_dead_and_print(data, &data->philos[i]);
                 return (NULL);
             }
             i++;
@@ -70,12 +69,12 @@ void *monitor(void *arg)
 
         if (all_philos_full(data))
         {
-            pthread_mutex_lock(&data->death_mutex);
+            pthread_mutex_lock(&data->write_mutex);
             data->simulation_stop = 1;
-            pthread_mutex_unlock(&data->death_mutex);
+            pthread_mutex_unlock(&data->write_mutex);
             return (NULL);
         }
-        usleep(500);
+        usleep(100);
     }
     return (NULL);
 }

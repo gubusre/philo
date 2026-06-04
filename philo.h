@@ -54,6 +54,7 @@ int     init_simulation(t_data *data);
 void    cleanup(t_data *data);
 void    join_threads(t_data *data);
 
+/* funciones que implementamos aquí */
 void    *philo_routine(void *arg);
 void    *monitor(void *arg);
 long long get_timestamp(void);

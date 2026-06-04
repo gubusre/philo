@@ -159,8 +159,72 @@ run_memcheck() {
 # Test suite ampliada
 # -------------------------
 
+# A. Validación de argumentos y casos inválidos
+run_case "no_args" 2 "" invalid
+run_case "zero_philos" 2 0 800 200 200 invalid
+run_case "negative_values" 2 -1 800 200 200 invalid
+run_case "non_numeric" 2 a b c d invalid
 
+# B. Casos básicos y límites (1 filósofo)
+run_case "one_philo_die_small" 5 1 399 200 200 die
+run_case "one_philo_survive_large" 5 1 2000 200 200 die
+run_case "one_philo_edge" 5 1 1010 200 200 die
 
+# C. Casos con must_eat (full)
+run_case "five_philo_musteat3" 20 5 800 200 200 3 full
+run_case "five_philo_musteat1" 10 5 800 200 200 1 full
+
+# D. Contención y deadlock potencial
+run_case "two_philo_short_die" 10 2 300 200 200 die
+run_case "two_philo_long" 10 2 1000 200 200 ok
+
+# E. Escalado y estrés
+run_case "ten_philo_short" 30 10 800 200 200 3 full
+run_case "twenty_philo_stress" 60 20 1000 200 200 2 full
+run_case "fifty_philo_stress" 120 50 2000 200 200 1 full
+
+# F. Casos con tiempos extremos
+run_case "tiny_times" 5 5 1 1 1 die
+run_case "huge_times" 10 5 100000 100 100 ok
+
+# G. Repeticiones estadísticas (mide fragilidad)
+run_repeat "one_philo_399_repeat" 50 3 1 399 200 200 die
+run_repeat "one_philo_800_repeat" 50 3 1 800 200 200 die
+
+# H. Memcheck (valgrind) - solo si valgrind instalado y VALGRIND=1
+if command -v valgrind >/dev/null 2>&1; then
+    if [ "$VALGRIND" -eq 1 ]; then
+        run_memcheck "five_philo_musteat3_mem" 30 5 800 200 200 3
+    else
+        echo "Valgrind available. To run memcheck set VALGRIND=1 and re-run the script."
+    fi
+else
+    echo "Valgrind not found; skipping memcheck tests."
+fi
+
+# I. Tests de robustez de salida (asegura que no hay prints tras muerte)
+# Ejecuta y comprueba si hay líneas después de la primera "died"
+run_case "post_death_output_check" 10 5 800 200 200 ok
+if grep -q "died" "$LOG"; then
+    first_died_line=$(grep -n "died" "$LOG" | head -n1 | cut -d: -f1)
+    total_lines=$(wc -l < "$LOG")
+    lines_after=$((total_lines - first_died_line))
+    echo "Lines after first died: $lines_after"
+    if [ $lines_after -gt 0 ]; then
+        echo "WARN: there are $lines_after lines after the first 'died' (may indicate threads printing after death)."
+    else
+        echo "OK: no output after death."
+    fi
+    echo
+fi
+
+# J. Test combinado: runs paralelas (simple, secuencial aquí)
+echo "=== Parallel-ish stress (sequential runs) ==="
+for i in 1 2 3; do
+    run_case "stress_run_$i" 60 30 1000 200 200 2 full &
+    sleep 1
+done
+wait
 
 # -------------------------
 # Repeticiones temporizadas: cuenta muertes en N ejecuciones
@@ -192,7 +256,7 @@ run_repeat_time() {
     echo
 }
 
-# Añadir los dos tests solicitados: 20 ejecuciones de 10s cada una
+# Añadir los dos tests solicitados: 30 ejecuciones de 10s cada una
 run_repeat_time "3philo_700_repeat" 10 10 3 800 200 200
 run_repeat_time "5philo_700_repeat" 10 10 5 800 200 200
 run_repeat_time "4philo_700_repeat" 10 10 4 800 200 200

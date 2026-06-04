@@ -176,7 +176,6 @@ int init_simulation(t_data *data)
 
             return (1);
         }
-        /* Mark that this thread was created so join/cleanup can be safe */
         data->threads_created++;
         i++;
     }
@@ -209,9 +208,7 @@ int main(int argc, char *argv[])
     }
     if (init_data(&data, argc, argv) != 0)
         return (1);
-
-    data.start_time = get_timestamp();
-
+        
     if (init_philos(&data) != 0)
     {
         cleanup(&data);

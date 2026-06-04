@@ -11,19 +11,29 @@ long long get_timestamp(void)
 void smart_sleep(long long ms, t_data *data)
 {
     long long start;
-    
+
     start = get_timestamp();
     while ((get_timestamp() - start) < ms)
     {
-        pthread_mutex_lock(&data->death_mutex);
+        pthread_mutex_lock(&data->write_mutex);
         if (data->simulation_stop)
         {
-            pthread_mutex_unlock(&data->death_mutex);
+            pthread_mutex_unlock(&data->write_mutex);
             break;
         }
-        pthread_mutex_unlock(&data->death_mutex);
+        pthread_mutex_unlock(&data->write_mutex);
         usleep(500);
     }
+}
+
+int simulation_should_stop(t_data *data)
+{
+    int stop;
+
+    pthread_mutex_lock(&data->write_mutex);
+    stop = data->simulation_stop;
+    pthread_mutex_unlock(&data->write_mutex);
+    return (stop);
 }
 
 void cleanup(t_data *data)
@@ -36,9 +46,7 @@ void cleanup(t_data *data)
     if (data->philos)
     {
         for (i = 0; i < data->n_philo; i++)
-        {
             pthread_mutex_destroy(&data->philos[i].meal_mutex);
-        }
         free(data->philos);
         data->philos = NULL;
     }
